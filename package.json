@@ -1,0 +1,29 @@
+{
+  "name": "monutell-agent",
+  "version": "1.0.0",
+  "description": "AI-powered context-aware audio guide agent for Hungary's historical monuments. Built for Google for Startups AI Agents Challenge.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davutayd/monutell-agent.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/davutayd/monutell-agent/issues"
+  },
+  "homepage": "https://github.com/davutayd/monutell-agent#readme",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
+    "pg": "^8.20.0"
+  }
+}

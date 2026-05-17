@@ -1,0 +1,274 @@
+.screenContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  color: #333;
+  padding: 0;
+  background-color: #f8f9fa;
+  min-height: 100%;
+  font-family: "Inter", "Segoe UI", "Roboto", sans-serif;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+
+.imageWrapper {
+  padding: 8px 16px 4px;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.monumentImage {
+  width: 100%;
+  max-width: 420px;
+  max-height: 240px;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  object-fit: cover;
+  aspect-ratio: 16/9;
+  display: block;
+}
+
+.contentWrapper {
+  padding: 0 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.languageSelector {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 12px;
+  background-color: #fff;
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.flagImage {
+  width: 32px;
+  height: 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.monumentTitle {
+  font-size: 1.85rem;
+  font-weight: 800;
+  margin-bottom: 24px;
+  line-height: 1.25;
+  color: #1a2340;
+}
+
+@media (max-width: 768px) {
+  .monumentTitle {
+    font-size: 1.4rem;
+    margin-bottom: 16px;
+    padding: 0 8px;
+  }
+}
+
+.storyContainer {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: #333;
+  background-color: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 768px) {
+  .storyContainer {
+    padding: 16px;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+}
+
+.highlightedWord {
+  background-color: #ffecb3;
+  padding: 2px 0;
+  border-radius: 3px;
+}
+
+.normalWord {
+  background-color: transparent;
+  padding: 2px 0;
+  border-radius: 3px;
+}
+
+.noImageContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.placeholderEmoji {
+  font-size: 3.2rem;
+  user-select: none;
+  line-height: 1;
+}
+
+.addPhotoButton {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px 24px;
+  border: 2px dashed #4a6fa5;
+  background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
+  border-radius: 14px;
+  color: #4a6fa5;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.addPhotoButton:hover {
+  background: rgba(74, 111, 165, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 111, 165, 0.2);
+}
+
+.addressRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.actionButtonsRow {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  padding: 0 8px;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+@media (max-width: 480px) {
+  .actionButton {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+}
+
+.actionButton:hover {
+  background: #f5f8fc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.actionButton svg {
+  font-size: 1.1rem;
+}
+
+.likeActive {
+  background: #fff0f0;
+  border-color: #e63946;
+  color: #e63946;
+}
+
+.likeActive:hover {
+  background: #ffe5e7;
+}
+
+.likeActive svg {
+  color: #e63946;
+}
+
+.visitedActive {
+  background: #e8f5e9;
+  border-color: #2a9d8f;
+  color: #2a9d8f;
+}
+
+.visitedActive:hover {
+  background: #d4edda;
+}
+
+.visitedActive svg {
+  color: #2a9d8f;
+}
+
+.reportButton {
+  border-color: #e0e0e0;
+  color: #e65100;
+}
+
+.reportButton:hover {
+  background: #fff3e0;
+  border-color: #e65100;
+}
+
+.reportButton svg {
+  color: #e65100;
+}
+
+
+@media (max-width: 640px) {
+  .monumentTitle {
+    font-size: 1.6rem;
+    line-height: 1.2;
+    margin-bottom: 16px;
+  }
+}
+
+
+@media (min-width: 641px) {
+  .screenContainer {
+    
+    width: 100% !important;
+    min-width: 100%;
+    margin: 0; 
+    
+    
+    flex-shrink: 0; 
+    
+    
+    padding: 1.5rem; 
+  }
+  
+  .imageWrapper {
+    height: auto;
+  }
+}
+
