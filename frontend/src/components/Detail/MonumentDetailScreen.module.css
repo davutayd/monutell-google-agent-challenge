@@ -33,7 +33,7 @@
 }
 
 .contentWrapper {
-  padding: 0 16px;
+  padding: 14px 16px 0;
   width: 100%;
   box-sizing: border-box;
 }

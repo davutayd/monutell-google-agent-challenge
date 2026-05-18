@@ -36,6 +36,8 @@ const AudioControls = ({
 
   const [localDuration, setLocalDuration] = useState(0);
   const [localCurrentTime, setLocalCurrentTime] = useState(0);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [audioError, setAudioError] = useState("");
   const sliderRef = useRef(null);
 
   useEffect(() => {
@@ -84,7 +86,8 @@ const AudioControls = ({
   }
 
   const handlePlayPause = async () => {
-    if (!audioUrl) return;
+    if (!audioUrl || isLoadingAudio) return;
+    setAudioError("");
 
     if (currentTrack?.id === monument?.id) {
       togglePlay();
@@ -92,8 +95,33 @@ const AudioControls = ({
       return;
     }
 
-    playAudio(audioUrl, trackTitle || "MonuTell Story", monument?.id || "");
-    setPausedBySystem(false);
+    setIsLoadingAudio(true);
+    try {
+      const response = await fetch("/api/audio-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monumentId: monument?.id, language: langCode }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Audio could not be loaded");
+      }
+
+      playAudio(data.signedUrl || audioUrl, trackTitle || "MonuTell Story", monument?.id || "");
+      setPausedBySystem(false);
+    } catch (error) {
+      console.error("Audio access failed:", error);
+      setAudioError(
+        isTurkish
+          ? "Ses bağlantısı hazırlanamadı. Storage erişimi veya servis hesabı ayarlarını kontrol edin."
+          : isHungarian
+            ? "Nem sikerült előkészíteni a hangkapcsolatot. Ellenőrizze a Storage-hozzáférést vagy a service account beállításait."
+            : "Audio link could not be prepared. Check Storage access or service account settings.",
+      );
+    } finally {
+      setIsLoadingAudio(false);
+    }
   };
 
   const handleStop = () => {
@@ -148,8 +176,13 @@ const AudioControls = ({
             <button 
               onClick={handlePlayPause} 
               className={styles.controlButton} 
+              disabled={isLoadingAudio}
+              style={{
+                opacity: isLoadingAudio ? 0.65 : 1,
+                cursor: isLoadingAudio ? "wait" : "pointer",
+              }}
             >
-              {!isSpeaking ? "▶️" : "⏸️"}
+              {isLoadingAudio ? "..." : !isSpeaking ? "▶️" : "⏸️"}
             </button>
             <button onClick={handleStop} className={styles.controlButton}>
               ⏹️
@@ -178,6 +211,7 @@ const AudioControls = ({
           </div>
         </div>
       </div>
+      {audioError && <div className={styles.audioError}>{audioError}</div>}
     </div>
   );
 };

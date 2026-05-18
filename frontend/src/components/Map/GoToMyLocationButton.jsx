@@ -26,6 +26,7 @@ const GoToMyLocationButton = ({
   language = "en",
   navBarH = 0,
   onLocationUpdate,
+  alignLeft = false,
 }) => {
   const map = useMap();
   const [isLoading, setIsLoading] = useState(false);
@@ -79,8 +80,8 @@ const GoToMyLocationButton = ({
   }, [position, map, getTranslation, onLocationUpdate]);
 
   const dynamicStyles = {
-    bottom: `${isMobile ? panelHeight + 40 + navBarH : 40}px`,
-    right: "16px",
+    bottom: '24px',
+    ...(alignLeft ? { left: '16px' } : { right: '16px' }),
     transition: "all 0.3s ease-in-out",
     opacity: shouldHide ? 0 : 1,
     pointerEvents: shouldHide ? "none" : "auto",

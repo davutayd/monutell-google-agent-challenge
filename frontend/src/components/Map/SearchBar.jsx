@@ -98,7 +98,12 @@ function fuzzyScore(str, query) {
   return score / (q.length * q.length);
 }
 
-const SearchBar = ({ monuments, onSelectResult, language = "tr" }) => {
+const SearchBar = ({
+  monuments,
+  onSelectResult,
+  language = "tr",
+  onFiltersOpenChange,
+}) => {
   const [query, setQuery]           = useState("");
   const [isActive, setIsActive]     = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
@@ -152,6 +157,13 @@ const SearchBar = ({ monuments, onSelectResult, language = "tr" }) => {
     setActiveCategory(null);
     setIsActive(false);
     setShowFilters(false);
+    onFiltersOpenChange?.(false);
+  };
+
+  const toggleFilters = () => {
+    const next = !showFilters;
+    setShowFilters(next);
+    onFiltersOpenChange?.(next);
   };
 
   const handleCategoryToggle = (cat) => {
@@ -176,7 +188,7 @@ const SearchBar = ({ monuments, onSelectResult, language = "tr" }) => {
           onFocus={() => (query.length > 1 || activeCategory) && setIsActive(true)}
         />
         <button
-          onClick={() => setShowFilters((p) => !p)}
+          onClick={toggleFilters}
           className={`${styles.filterToggleBtn} ${(activeCategory || showFilters) ? styles.filterToggleActive : ""}`}
           type="button"
           aria-label="Filtrele"
@@ -222,6 +234,7 @@ const SearchBar = ({ monuments, onSelectResult, language = "tr" }) => {
                   setIsActive(false);
                   setQuery(getDisplayName(item));
                   setShowFilters(false);
+                  onFiltersOpenChange?.(false);
                 }}
               >
                 <div className={styles.iconBox} style={{ backgroundColor: meta.color }}>

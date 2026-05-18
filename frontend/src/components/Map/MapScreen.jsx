@@ -283,6 +283,9 @@ const MapScreen = ({
   onSelectMonumentFromCollection,
   onNavigateHome,
   onOpenDesktopProfile,
+  onSettingsOpenChange,
+  onSearchFiltersOpenChange,
+  hideBranding = false,
 }) => {
   const handleOpenSettings = () => {
     if (isPanelOpen && onClosePanel) onClosePanel();
@@ -305,6 +308,10 @@ const MapScreen = ({
   const mapWrapperRef = useRef(null);
 
   const isBelowMinZoom = zoomLevel < MIN_ZOOM;
+
+  useEffect(() => {
+    onSettingsOpenChange?.(isSettingsOpen);
+  }, [isSettingsOpen, onSettingsOpenChange]);
 
   useEffect(() => {
     if (position) setUserPosition(position);
@@ -448,6 +455,7 @@ const MapScreen = ({
         monuments={allMonuments}
         onSelectResult={handleSearchSelect}
         language={language}
+        onFiltersOpenChange={onSearchFiltersOpenChange}
       />
 
 
@@ -539,6 +547,7 @@ const MapScreen = ({
           shouldHide={shouldHideButtons}
           language={language}
           onLocationUpdate={handleLocationUpdate}
+          alignLeft={true}
         />
 
         <div className={styles.legendWrapper} style={buttonVisibilityStyle}>
@@ -560,27 +569,18 @@ const MapScreen = ({
           </div>
         </div>
 
-        {!isCollectionOpen && !isPanelOpen && !isLegendOpen && (
-          <a
-            href="https://www.linkedin.com/in/davut-aydemir/"
-            className={styles.brandingFooter}
-            style={buttonVisibilityStyle}
-          >
-            Made by Davut Aydemir
-          </a>
-        )}
+        {/* Branding removed — managed externally */}
       </MapContainer>
 
-      {!isMobile && (
-        <button
-          className={settingsStyles.settingsButton}
-          onClick={handleOpenSettings}
-          style={{ ...buttonVisibilityStyle, position: 'absolute', bottom: '100px', right: '16px', zIndex: 1000 }}
-          aria-label="Language settings"
-        >
-          <FaGlobe size={22} color="#4a6fa5" />
-        </button>
-      )}
+      {/* Bottom-left stack: Globe (top) + Location (bottom) */}
+      <button
+        className={settingsStyles.settingsButton}
+        onClick={handleOpenSettings}
+        style={{ ...buttonVisibilityStyle, position: 'absolute', bottom: '86px', left: '16px', zIndex: 1000 }}
+        aria-label="Language settings"
+      >
+        <FaGlobe size={22} color="#4a6fa5" />
+      </button>
 
       {isAnyModalOpen && <div className={styles.focusBackdrop} />}
 
