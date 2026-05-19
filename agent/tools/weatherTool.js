@@ -1,67 +1,73 @@
 export const weatherToolDefinition = {
   name: 'get_weather_forecast',
-  description: 'Gets the current weather and forecast for a specific location to help plan monument visits.',
+  description: 'Gets the current weather and short-term forecast for a location to help plan monument visits.',
   parameters: {
     type: 'OBJECT',
     properties: {
-      lat: {
-        type: 'NUMBER',
-        description: 'The latitude coordinate.'
-      },
-      lng: {
-        type: 'NUMBER',
-        description: 'The longitude coordinate.'
-      }
+      lat: { type: 'NUMBER', description: 'Latitude coordinate.' },
+      lng: { type: 'NUMBER', description: 'Longitude coordinate.' },
     },
-    required: ['lat', 'lng']
-  }
+    required: ['lat', 'lng'],
+  },
 };
 
 export async function getWeatherForecast({ lat, lng }) {
   const apiKey = process.env.OPENWEATHER_API_KEY;
-  
-  // If no API key or placeholder is used, return mock data
+
+  // ── Mock fallback (no key configured) ────────────────────────────────────
   if (!apiKey || apiKey === 'your_openweather_api_key_here') {
     return {
       status: 'success',
       mock: true,
-      weather: {
-        current: {
-          temp: 22,
-          conditions: 'Partly Cloudy',
-          goodForWalking: true
-        },
-        forecast: 'No rain expected in the next few hours. Perfect for exploring!'
-      }
+      current_condition: 'partly cloudy',
+      temperature_celsius: 22,
+      rain_in_minutes: null,
+      advice: 'Good weather for outdoor tour',
     };
   }
 
+  // ── Live OpenWeatherMap /forecast (3-hour steps, cnt=4 ≈ 12 hours) ───────
   try {
-    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${apiKey}&units=metric`;
+    const latitude  = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric&cnt=4`;
+
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Weather API error: ${response.statusText}`);
+      throw new Error(`OpenWeather API error: ${response.status} ${response.statusText}`);
     }
     const data = await response.json();
-    
-    const conditions = data.weather[0].main;
-    const isRaining = conditions.toLowerCase().includes('rain');
-    
+
+    // Current conditions come from the first forecast slot
+    const current = data.list[0];
+    const currentCondition = current.weather[0].description;
+    const temperatureCelsius = Math.round(current.main.temp);
+    const now = Date.now();
+
+    // Detect the earliest rain/drizzle slot and calculate minutes away
+    let rainInMinutes = null;
+    for (const item of data.list) {
+      const main = item.weather[0].main; // e.g. "Rain", "Drizzle", "Clear"
+      if (main === 'Rain' || main === 'Drizzle') {
+        const slotTime = item.dt * 1000; // dt is UNIX seconds
+        rainInMinutes = Math.round((slotTime - now) / 60_000);
+        if (rainInMinutes < 0) rainInMinutes = 0; // already raining
+        break;
+      }
+    }
+
+    const advice = rainInMinutes !== null
+      ? `Rain expected in ${rainInMinutes} minutes, prioritize covered monuments`
+      : 'Good weather for outdoor tour';
+
     return {
       status: 'success',
-      weather: {
-        current: {
-          temp: data.main.temp,
-          conditions: data.weather[0].description,
-          goodForWalking: !isRaining && data.main.temp > 5 && data.main.temp < 35
-        },
-        forecast: isRaining ? 'Rain is expected. Bring an umbrella!' : 'Clear weather for walking.'
-      }
+      current_condition: currentCondition,
+      temperature_celsius: temperatureCelsius,
+      rain_in_minutes: rainInMinutes,
+      advice,
     };
   } catch (error) {
-    return {
-      status: 'error',
-      message: error.message
-    };
+    return { status: 'error', message: error.message };
   }
 }

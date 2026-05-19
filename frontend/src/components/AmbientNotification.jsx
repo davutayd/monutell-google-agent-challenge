@@ -1,15 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
 import { Play, X, MapPin } from "lucide-react";
 import { t } from "../translations";
+import { getCategoryEmoji } from "../utils/categoryEmoji";
 
 export default function AmbientNotification({
   monument,
   onDismiss,
   language = "tr",
 }) {
+  const [imgFailed, setImgFailed] = useState(false);
   if (!monument) return null;
 
   const distanceM = Math.round(monument.distance * 1000);
+  const emoji = getCategoryEmoji(monument.category);
+  const showImage = monument.imageUrl && !imgFailed;
 
   return (
     <div
@@ -45,19 +49,38 @@ export default function AmbientNotification({
         }}
       />
 
-      {/* Görsel */}
-      <img
-        src={monument.imageUrl}
-        alt={monument.name}
-        style={{
-          width: "52px",
-          height: "52px",
-          borderRadius: "12px",
-          objectFit: "cover",
-          flexShrink: 0,
-          border: "1px solid rgba(212,175,55,0.25)",
-        }}
-      />
+      {/* Görsel / Emoji fallback */}
+      {showImage ? (
+        <img
+          src={monument.imageUrl}
+          alt={monument.name}
+          onError={() => setImgFailed(true)}
+          style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "12px",
+            objectFit: "cover",
+            flexShrink: 0,
+            border: "1px solid rgba(212,175,55,0.25)",
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "12px",
+            background: "#c9a84c",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "1.6rem",
+          }}
+        >
+          {emoji}
+        </div>
+      )}
 
       {/* Metin */}
       <div style={{ flex: 1, minWidth: 0 }}>

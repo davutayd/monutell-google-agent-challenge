@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Bot } from "lucide-react";
 import AgentChat from "../components/AgentChat";
 import AmbientNotification from "../components/AmbientNotification";
 import useAmbientAgent from "../hooks/useAmbientAgent";
-import useLocation from "../hooks/useLocation";
+import useLocationLatLng, { useLocation } from "../hooks/useLocation";
 import MapScreen from "../components/Map/MapScreen";
 import MonumentDetailScreen from "../components/Detail/MonumentDetailScreen";
 import { t } from "../translations";
@@ -17,8 +17,45 @@ const getInitialLanguage = () => {
 export default function MapPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isChatClosing, setIsChatClosing] = useState(false);
-  const location = useLocation();
+
+  const { position, accuracy, updateLocation } = useLocation();
+
+  const location = React.useMemo(
+    () => (position ? { lat: position[0], lng: position[1] } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [position?.[0], position?.[1]]
+  );
+
   const { ambientMonuments, dismissNotification } = useAmbientAgent(location);
+
+  const [isSimulating, setIsSimulating] = useState(false);
+  const simulateIntervalRef = useRef(null);
+  const simPositionRef = useRef(null);
+
+  const toggleSimulation = useCallback(() => {
+    setIsSimulating((prev) => {
+      if (prev) {
+        clearInterval(simulateIntervalRef.current);
+        simulateIntervalRef.current = null;
+        simPositionRef.current = null;
+        return false;
+      } else {
+        const startPos = position ? [...position] : [47.4979, 19.0402];
+        simPositionRef.current = startPos;
+        simulateIntervalRef.current = setInterval(() => {
+          if (!simPositionRef.current) return;
+          simPositionRef.current[0] += 0.0002;
+          simPositionRef.current[1] += 0.0002;
+          updateLocation([simPositionRef.current[0], simPositionRef.current[1]], 5);
+        }, 1000);
+        return true;
+      }
+    });
+  }, [position, updateLocation]);
+
+  useEffect(() => {
+    return () => clearInterval(simulateIntervalRef.current);
+  }, []);
 
   const [allMonuments, setAllMonuments] = useState([]);
   const [selectedMonument, setSelectedMonument] = useState(null);
@@ -270,6 +307,81 @@ export default function MapPage() {
         <Bot size={22} />
         <span>{t("plan_with_ai", language)}</span>
       </button>
+
+      {/* GPS walk simulation — development only */}
+      {import.meta.env.DEV && (
+        <button
+          onClick={toggleSimulation}
+          title={
+            language === "tr"
+              ? "GPS simülasyonu (saniyede +0.0002 lat/lng)"
+              : language === "hu"
+              ? "GPS szimuláció (másodpercenként +0.0002 lat/lng)"
+              : "GPS simulation (+0.0002 lat/lng per second)"
+          }
+          style={{
+            position: "absolute",
+            bottom: "80px",
+            right: "16px",
+            zIndex: isFabBackgrounded ? 450 : 900,
+            opacity: isFabBackgrounded ? 0 : 1,
+            pointerEvents: isFabBackgrounded ? "none" : "auto",
+            background: isSimulating
+              ? "rgba(201, 168, 76, 0.92)"
+              : "rgba(26, 26, 46, 0.85)",
+            color: isSimulating ? "#1a1a2e" : "#c9a84c",
+            border: "1px solid #c9a84c",
+            borderRadius: "24px",
+            padding: "10px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontWeight: 600,
+            fontSize: "13px",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            boxShadow: isSimulating ? "0 4px 16px rgba(201,168,76,0.4)" : "none",
+          }}
+        >
+          🚶‍♂️{" "}
+          {isSimulating
+            ? (language === "tr" ? "Durdur" : language === "hu" ? "Megállít" : "Stop Walk")
+            : (language === "tr" ? "Yürüyüş Simüle Et" : language === "hu" ? "Séta Szimuláció" : "Simulate Walk")
+          }
+        </button>
+      )}
+
+      {/* Live coordinate badge — only visible while simulating */}
+      {import.meta.env.DEV && isSimulating && position && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "134px",
+            right: "16px",
+            zIndex: 900,
+            background: "rgba(26,26,46,0.9)",
+            border: "1px solid rgba(201,168,76,0.5)",
+            borderRadius: "12px",
+            padding: "6px 12px",
+            fontSize: "11px",
+            fontFamily: "monospace",
+            color: "#c9a84c",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            lineHeight: 1.6,
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ fontSize: "10px", color: "#9ca3af", marginBottom: "2px" }}>
+            📡 GPS SIM
+          </div>
+          <div>lat: {position[0].toFixed(5)}</div>
+          <div>lng: {position[1].toFixed(5)}</div>
+        </div>
+      )}
+
 
       {isChatOpen && (
         <div

@@ -1,50 +1,63 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+const COOLDOWN_MS = 10 * 60 * 1000;
+const POLL_MS = import.meta.env.DEV ? 10_000 : 30_000;
 
 export default function useAmbientAgent(location) {
   const [ambientMonuments, setAmbientMonuments] = useState([]);
+  const cooldownRef = useRef({});
   const [seenIds, setSeenIds] = useState([]);
 
+  const lat = location?.lat ?? null;
+  const lng = location?.lng ?? null;
+
   useEffect(() => {
-    if (!location) return;
+    if (lat === null || lng === null) return;
 
     const checkAmbient = async () => {
       try {
         const queryParams = new URLSearchParams({
-          lat: location.lat,
-          lng: location.lng,
+          lat,
+          lng,
           radius_km: 0.5,
-          seen_ids: seenIds.join(',')
+          seen_ids: seenIds.join(','),
         });
-        
-        const res = await fetch(`http://localhost:3000/api/ambient?${queryParams}`);
+
+        const res = await fetch(`/api/ambient?${queryParams}`);
+        if (!res.ok) return;
         const data = await res.json();
-        
-        if (data.status === 'success' && data.ambient_monuments.length > 0) {
-          // Add only monuments not already in ambient list
-          const newMonuments = data.ambient_monuments.filter(
-            m => !ambientMonuments.find(am => am.id === m.id)
+
+        if (data.status === 'success' && data.ambient_monuments?.length > 0) {
+          const now = Date.now();
+
+          const available = data.ambient_monuments.filter((m) => {
+            const lastShown = cooldownRef.current[m.id];
+            return !lastShown || now - lastShown > COOLDOWN_MS;
+          });
+
+          if (available.length === 0) return;
+
+          const nearest = available.reduce((a, b) =>
+            (a.distance ?? Infinity) <= (b.distance ?? Infinity) ? a : b
           );
-          
-          if (newMonuments.length > 0) {
-            setAmbientMonuments(prev => [...prev, ...newMonuments]);
-          }
+
+          cooldownRef.current[nearest.id] = now;
+          setAmbientMonuments([nearest]);
         }
       } catch (error) {
         console.error('Ambient check error:', error);
       }
     };
 
-    // Poll every 30 seconds
-    const interval = setInterval(checkAmbient, 30000);
-    // Initial check
     checkAmbient();
-
+    const interval = setInterval(checkAmbient, POLL_MS);
     return () => clearInterval(interval);
-  }, [location, seenIds]);
+  }, [lat, lng, seenIds]);
 
   const dismissNotification = (id) => {
-    setAmbientMonuments(prev => prev.filter(m => m.id !== id));
-    setSeenIds(prev => [...prev, id]);
+    setAmbientMonuments((prev) => prev.filter((m) => m.id !== id));
+    setSeenIds((prev) => [...prev, id]);
+    cooldownRef.current[id] = Date.now();
   };
 
   return { ambientMonuments, dismissNotification };

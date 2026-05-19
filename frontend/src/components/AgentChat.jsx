@@ -1,39 +1,140 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, MapPin, Loader2 } from "lucide-react";
+import { Send, Trash2 } from "lucide-react";
 import { t } from "../translations";
+import { getCategoryEmoji } from "../utils/categoryEmoji";
+
+/* ── Constants ──────────────────────────────────────────────────────────── */
+const STORAGE_KEY = "monutell_chat_history";
+
+function defaultGreeting(language) {
+  return [{ id: 0, role: "assistant", content: t("agent_greeting", language) }];
+}
+
+/* ── Sub-components ─────────────────────────────────────────────────────── */
+
+/** 2-column grid of monument cards */
+function MonumentCard({ m }) {
+  const emoji = getCategoryEmoji(m.category);
+  const [imgFailed, setImgFailed] = React.useState(false);
+  const showImage = m.imageUrl && !imgFailed;
+
+  return (
+    <div style={styles.monumentCard}>
+      {showImage ? (
+        <img
+          src={m.imageUrl}
+          alt={m.name}
+          style={styles.monumentImg}
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <div style={styles.monumentPlaceholder}>
+          <span style={{ fontSize: "2.5rem" }}>{emoji}</span>
+        </div>
+      )}
+      <div style={styles.monumentInfo}>
+        <p style={styles.monumentName}>{m.name}</p>
+        {m.distance != null && (
+          <p style={styles.monumentDistance}>{m.distance.toFixed(2)} km</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MonumentGrid({ monuments }) {
+  const items = monuments.slice(0, 4);
+  return (
+    <div style={styles.monumentGrid}>
+      {items.map((m) => <MonumentCard key={m.id} m={m} />)}
+    </div>
+  );
+}
+
+/** Styled numbered route list */
+function RouteList({ route }) {
+  if (!route?.route || !route?.summary) return null;
+  return (
+    <div style={styles.routeContainer}>
+      {route.route.map((stop, idx) => {
+        const emoji = getCategoryEmoji(stop.category);
+        return (
+          <div key={stop.id ?? idx} style={styles.routeItem}>
+            <div style={styles.routeNumber}>{idx + 1}</div>
+            <div style={styles.routeMiddle}>
+              <span style={styles.routeName}>{stop.name}</span>
+              {stop.distanceFromPreviousKm != null && (
+                <span style={styles.routeDist}>
+                  +{stop.distanceFromPreviousKm} km
+                </span>
+              )}
+            </div>
+            <span style={{ fontSize: "1.25rem" }}>{emoji}</span>
+          </div>
+        );
+      })}
+      <div style={styles.routeSummary}>
+        🗺️ {route.summary.totalDistanceKm} km &nbsp;·&nbsp; ⏱️{" "}
+        {route.summary.estimatedWalkingMinutes} dk
+      </div>
+    </div>
+  );
+}
+
+/* ── Main component ─────────────────────────────────────────────────────── */
 
 export default function AgentChat({ location, language = "tr" }) {
-  const [messages, setMessages] = useState([
-    { type: "agent", content: t("agent_greeting", language) },
-  ]);
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : defaultGreeting(language);
+    } catch {
+      return defaultGreeting(language);
+    }
+  });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  /* Auto-scroll */
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  /* Persist (skip ephemeral agent-step messages) */
+  useEffect(() => {
+    try {
+      const toSave = messages.filter((m) => m.role !== "agent-step");
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } catch { /* quota */ }
+  }, [messages]);
+
+  /* Sync greeting on language change */
   useEffect(() => {
     setMessages((prev) => {
-      if (prev.length === 1 && prev[0].type === "agent") {
-        return [{ type: "agent", content: t("agent_greeting", language) }];
+      if (prev.length === 1 && prev[0].role === "assistant") {
+        return defaultGreeting(language);
       }
       return prev;
     });
   }, [language]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  /* Clear */
+  const clearHistory = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setMessages(defaultGreeting(language));
+  };
 
-    const userMessage = input;
+  /* Send + SSE stream */
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+    const userMessage = input.trim();
     setInput("");
-    setMessages((prev) => [...prev, { type: "user", content: userMessage }]);
     setIsLoading(true);
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), role: "user", content: userMessage },
+    ]);
 
     try {
       const response = await fetch("/api/chat", {
@@ -41,141 +142,165 @@ export default function AgentChat({ location, language = "tr" }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage,
+          language,          // top-level — server uses this to enforce language in system prompt
           context: {
             ...(location ? { lat: location.lat, lng: location.lng } : {}),
-            language,
           },
         }),
       });
 
-      const data = await response.json();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      if (data.steps) {
-        // Parse steps and display agent messages and tool results
-        const newMessages = data.steps
-          .filter(
-            (step) =>
-              step.type === "agent_message" ||
-              step.type === "tool_result" ||
-              step.type === "error",
-          )
-          .map((step) => {
-            if (step.type === "agent_message") {
-              return { type: "agent", content: step.content };
-            } else if (step.type === "tool_result") {
-              return { type: "tool", name: step.name, data: step.result };
-            } else if (step.type === "error") {
-              return { type: "error", content: step.content };
-            }
-            return null;
-          })
-          .filter(Boolean);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-        setMessages((prev) => [...prev, ...newMessages]);
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          let data;
+          try { data = JSON.parse(line.slice(6)); } catch { continue; }
+
+          if (data.type === "step") {
+            setMessages((prev) => [
+              ...prev,
+              { id: Date.now() + Math.random(), role: "agent-step", content: data.message },
+            ]);
+          }
+
+          if (data.type === "result") {
+            setMessages((prev) => [
+              ...prev.filter((m) => m.role !== "agent-step"),
+              {
+                id: Date.now(),
+                role: "assistant",
+                content: data.response,
+                monuments: data.monuments ?? null,
+                route: data.route ?? null,
+              },
+            ]);
+            setIsLoading(false);
+          }
+
+          if (data.type === "error") {
+            setMessages((prev) => [
+              ...prev.filter((m) => m.role !== "agent-step"),
+              { id: Date.now(), role: "error", content: t("error_message", language) },
+            ]);
+            setIsLoading(false);
+          }
+        }
       }
-    } catch (error) {
-      console.error("Chat error:", error);
+    } catch (err) {
+      console.error("Chat SSE error:", err);
       setMessages((prev) => [
-        ...prev,
-        { type: "error", content: t("error_message", language) },
+        ...prev.filter((m) => m.role !== "agent-step"),
+        { id: Date.now(), role: "error", content: t("error_message", language) },
       ]);
-    } finally {
       setIsLoading(false);
     }
   };
 
+  /* ── Render ─────────────────────────────────────────────────────────── */
   return (
-    <div className="flex flex-col h-full bg-[#111122]">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[85%] rounded-2xl p-3 ${
-                msg.type === "user"
-                  ? "bg-primary-gold text-primary-dark"
-                  : msg.type === "error"
-                    ? "bg-red-900 text-white"
-                    : msg.type === "tool"
-                      ? "bg-gray-800 border border-gray-700 w-full"
-                      : "bg-gray-800 text-gray-100"
-              }`}
-            >
-              {msg.type === "tool" ? (
-                <div className="text-sm">
-                  <div className="flex items-center gap-1 text-gray-400 mb-2 uppercase text-xs font-bold tracking-wider">
-                    <MapPin size={12} /> {t("tool_result", language)}:{" "}
-                    {msg.name}
-                  </div>
-                  {msg.name === "find_nearby_monuments" &&
-                    msg.data.monuments && (
-                      <div className="flex gap-2 overflow-x-auto pb-2">
-                        {msg.data.monuments.slice(0, 3).map((m) => (
-                          <div
-                            key={m.id}
-                            className="min-w-[120px] bg-primary-dark rounded p-2 text-xs"
-                          >
-                            <img
-                              src={m.imageUrl}
-                              alt={m.name}
-                              className="w-full h-16 object-cover rounded mb-1"
-                            />
-                            <p className="font-bold truncate text-white">
-                              {m.name}
-                            </p>
-                            <p className="text-primary-gold">
-                              {m.distance.toFixed(1)} km
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  {msg.name === "get_weather_forecast" && msg.data.weather && (
-                    <div>
-                      {msg.data.weather.current.temp}°C,{" "}
-                      {msg.data.weather.current.conditions}
-                    </div>
-                  )}
-                  {msg.name === "optimize_tour_route" && msg.data.route && (
-                    <div>
-                      Route calculated: {msg.data.summary.totalDistanceKm} km,{" "}
-                      {msg.data.summary.estimatedWalkingMinutes} mins.
-                    </div>
-                  )}
+    <div style={styles.root}>
+
+      {/* Header */}
+      <div style={styles.header}>
+        <span style={styles.headerTitle}>{t("agent_title", language)}</span>
+        <button onClick={clearHistory} style={styles.clearBtn} title="Sohbeti Temizle">
+          <Trash2 size={13} />
+          <span>Sohbeti Temizle</span>
+        </button>
+      </div>
+
+      {/* Message list */}
+      <div style={styles.messageList} className="chatScrollArea">
+        {messages.map((msg) => {
+          const isUser  = msg.role === "user";
+          const isStep  = msg.role === "agent-step";
+          const isError = msg.role === "error";
+          const isRich  = !!(msg.monuments || msg.route);
+
+          return (
+            <div key={msg.id} style={{ ...styles.messageRow, justifyContent: isUser ? "flex-end" : "flex-start" }}>
+
+              {/* Agent-step: italic progress */}
+              {isStep ? (
+                <div className="agentStep">
+                  {msg.content}<span className="stepDot" />
                 </div>
               ) : (
-                <p className="text-sm leading-relaxed">{msg.content}</p>
+                <div
+                  style={{
+                    ...styles.bubble,
+                    ...(isUser  ? styles.bubbleUser  : {}),
+                    ...(isError ? styles.bubbleError : {}),
+                    ...(isRich  ? styles.bubbleRich  : {}),
+                    maxWidth: isUser ? "75%" : "90%",
+                  }}
+                >
+                  {/* Monument grid */}
+                  {msg.monuments && msg.monuments.length > 0 && (
+                    <div style={styles.sectionBlock}>
+                      <div style={styles.sectionLabel}>
+                        <span style={{ fontSize: "0.75rem", opacity: 0.5 }}>📍</span>
+                      </div>
+                      <MonumentGrid monuments={msg.monuments} />
+                    </div>
+                  )}
+
+                  {/* Route list */}
+                  {msg.route && (
+                    <div style={styles.sectionBlock}>
+                      <RouteList route={msg.route} />
+                    </div>
+                  )}
+
+                  {/* Text content */}
+                  {msg.content && (
+                    <p style={{
+                      ...styles.bubbleText,
+                      ...(isUser ? { color: "#1a1a2e" } : {}),
+                    }}>
+                      {msg.content}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-800 rounded-2xl p-3 text-gray-400 flex items-center gap-2">
-              <Loader2 className="animate-spin" size={16} />{" "}
-              {t("agent_thinking", language)}
+          );
+        })}
+
+        {/* Fallback spinner before first step event */}
+        {isLoading && !messages.some((m) => m.role === "agent-step") && (
+          <div style={{ ...styles.messageRow, justifyContent: "flex-start" }}>
+            <div className="agentStep">
+              ⚙️ {t("agent_thinking", language)}<span className="stepDot" />
             </div>
           </div>
         )}
+
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-3 bg-primary-dark border-t border-gray-800">
-        <div className="flex items-center bg-gray-800 rounded-full px-4 py-2">
+      {/* Input bar */}
+      <div style={styles.inputBar}>
+        <div style={styles.inputWrap}>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
             placeholder={t("placeholder_message", language)}
-            className="flex-1 bg-transparent outline-none text-white text-sm"
+            disabled={isLoading}
+            style={styles.input}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="text-primary-gold p-1 hover:bg-gray-700 rounded-full transition disabled:opacity-50"
+            style={styles.sendBtn}
           >
             <Send size={18} />
           </button>
@@ -184,3 +309,227 @@ export default function AgentChat({ location, language = "tr" }) {
     </div>
   );
 }
+
+/* ── Inline styles (CSS Modules yerine JS object — Tailwind bağımlılığı yok) */
+const styles = {
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+    background: "#111122",
+    fontFamily: "inherit",
+  },
+
+  /* Header */
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "8px 16px",
+    borderBottom: "1px solid #1f2937",
+  },
+  headerTitle: {
+    fontSize: "0.7rem",
+    color: "#6b7280",
+    textTransform: "uppercase",
+    letterSpacing: "0.1em",
+    fontWeight: 600,
+  },
+  clearBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: "0.75rem",
+    color: "#6b7280",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    padding: "4px 8px",
+    borderRadius: 6,
+    transition: "color 0.2s",
+  },
+
+  /* Message list */
+  messageList: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "16px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+    scrollBehavior: "smooth",
+  },
+  messageRow: {
+    display: "flex",
+    width: "100%",
+  },
+
+  /* Bubbles */
+  bubble: {
+    borderRadius: 18,
+    padding: "10px 14px",
+    background: "#1f2937",
+    color: "#f3f4f6",
+    lineHeight: 1.5,
+  },
+  bubbleUser: {
+    background: "#c9a84c",
+    color: "#1a1a2e",
+    borderBottomRightRadius: 4,
+  },
+  bubbleError: {
+    background: "#7f1d1d",
+    color: "#fecaca",
+  },
+  bubbleRich: {
+    background: "#1a1a2e",
+    border: "1px solid #374151",
+    borderRadius: 16,
+    padding: "12px",
+    width: "100%",
+  },
+  bubbleText: {
+    margin: 0,
+    fontSize: "0.9rem",
+    lineHeight: 1.55,
+    whiteSpace: "pre-wrap",
+    color: "#f3f4f6",
+  },
+
+  /* Section block (inside rich bubble) */
+  sectionBlock: {
+    marginBottom: 10,
+  },
+  sectionLabel: {
+    marginBottom: 6,
+  },
+
+  /* Monument grid */
+  monumentGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 8,
+  },
+  monumentCard: {
+    background: "#1e1e2e",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  monumentImg: {
+    width: "100%",
+    height: 120,
+    objectFit: "cover",
+    display: "block",
+  },
+  monumentPlaceholder: {
+    width: "100%",
+    height: 120,
+    background: "#c9a84c",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  monumentInfo: {
+    padding: "6px 8px 8px",
+  },
+  monumentName: {
+    margin: 0,
+    fontWeight: 700,
+    fontSize: "0.85rem",
+    color: "#ffffff",
+    overflow: "hidden",
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+    lineHeight: 1.3,
+  },
+  monumentDistance: {
+    margin: "3px 0 0",
+    fontSize: "0.75rem",
+    color: "#c9a84c",
+  },
+
+  /* Route list */
+  routeContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 0,
+  },
+  routeItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "8px 0",
+    borderBottom: "1px solid #2d3748",
+  },
+  routeNumber: {
+    width: 26,
+    height: 26,
+    borderRadius: "50%",
+    background: "#c9a84c",
+    color: "#1a1a2e",
+    fontWeight: 700,
+    fontSize: "0.8rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  routeMiddle: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+  },
+  routeName: {
+    fontWeight: 700,
+    fontSize: "0.85rem",
+    color: "#ffffff",
+  },
+  routeDist: {
+    fontSize: "0.75rem",
+    color: "#9ca3af",
+  },
+  routeSummary: {
+    marginTop: 10,
+    fontWeight: 700,
+    fontSize: "0.9rem",
+    color: "#c9a84c",
+    textAlign: "center",
+    letterSpacing: "0.03em",
+  },
+
+  /* Input */
+  inputBar: {
+    padding: "10px 12px",
+    background: "#1a1a2e",
+    borderTop: "1px solid #1f2937",
+  },
+  inputWrap: {
+    display: "flex",
+    alignItems: "center",
+    background: "#1f2937",
+    borderRadius: 999,
+    padding: "6px 6px 6px 16px",
+  },
+  input: {
+    flex: 1,
+    background: "transparent",
+    border: "none",
+    outline: "none",
+    color: "#ffffff",
+    fontSize: "0.9rem",
+  },
+  sendBtn: {
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    color: "#c9a84c",
+    padding: "6px",
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "background 0.2s",
+  },
+};
