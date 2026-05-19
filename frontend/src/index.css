@@ -1,8 +1,26 @@
 @import "tailwindcss";
 
+:root {
+  --color-ai-bg: rgb(15, 23, 42);
+  --gold-gradient: linear-gradient(135deg, #fbbf24, #f59e0b);
+  --color-ai-text: #f8fafc;
+}
+
 @theme {
   --color-primary-dark: #1a1a2e;
   --color-primary-gold: #c9a84c;
+
+  --animate-slide-up: slide-up 0.3s ease-out forwards;
+  @keyframes slide-up {
+    0% {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
 }
 
 @layer base {
@@ -12,24 +30,16 @@
   }
 }
 
-@keyframes slide-up {
-  0%   { transform: translateY(100%); opacity: 0; }
-  100% { transform: translateY(0);    opacity: 1; }
+/* Custom leaflet map styles */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 10;
 }
 
 @keyframes stepPulse {
   0%, 100% { opacity: 1;    transform: scale(1);   }
   50%       { opacity: 0.25; transform: scale(0.7); }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out forwards;
-}
-
-.leaflet-container {
-  width: 100%;
-  height: 100%;
-  z-index: 10;
 }
 
 .agentStep {
@@ -55,7 +65,7 @@
 
 .chatScrollArea {
   scrollbar-width: thin;
-  scrollbar-color: #c9a84c transparent;
+  scrollbar-color: #f59e0b transparent;
 }
 
 .chatScrollArea::-webkit-scrollbar {
@@ -63,15 +73,12 @@
 }
 
 .chatScrollArea::-webkit-scrollbar-track {
-  background: #1a1a2e;
+  background: transparent;
   border-radius: 10px;
 }
 
 .chatScrollArea::-webkit-scrollbar-thumb {
-  background: #c9a84c;
+  background: var(--gold-gradient);
   border-radius: 10px;
 }
 
-.chatScrollArea::-webkit-scrollbar-thumb:hover {
-  background: #e0bc62;
-}

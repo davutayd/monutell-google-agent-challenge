@@ -198,8 +198,8 @@ export default function MapPage() {
     zIndex: isFabBackgrounded ? 450 : 900,
     opacity: isFabBackgrounded ? 0 : 1,
     pointerEvents: isFabBackgrounded ? "none" : "auto",
-    background: "linear-gradient(135deg, #D4AF37, #f0cc6e)",
-    color: "#111122",
+    background: "var(--gold-gradient)",
+    color: "#0f172a",
     border: "none",
     borderRadius: "32px",
     padding: "14px 20px",
@@ -208,7 +208,7 @@ export default function MapPage() {
     gap: "8px",
     fontWeight: 700,
     fontSize: "15px",
-    boxShadow: "0 6px 20px rgba(212,175,55,0.45)",
+    boxShadow: "0 6px 20px rgba(251, 191, 36, 0.45)",
     cursor: "pointer",
     transition: "opacity 0.2s ease, transform 0.15s, box-shadow 0.15s",
   };
@@ -326,13 +326,16 @@ export default function MapPage() {
             zIndex: isFabBackgrounded ? 450 : 900,
             opacity: isFabBackgrounded ? 0 : 1,
             pointerEvents: isFabBackgrounded ? "none" : "auto",
-            background: isSimulating
-              ? "rgba(201, 168, 76, 0.92)"
-              : "rgba(26, 26, 46, 0.85)",
-            color: isSimulating ? "#1a1a2e" : "#c9a84c",
-            border: "1px solid #c9a84c",
+            background: "var(--color-ai-bg)",
+            color: "var(--color-gold, #fbbf24)",
+            border: isSimulating ? "2px solid var(--color-gold, #fbbf24)" : "2px solid transparent",
+            backgroundImage: isSimulating 
+              ? "none" 
+              : "linear-gradient(var(--color-ai-bg), var(--color-ai-bg)), var(--gold-gradient)",
+            backgroundOrigin: "border-box",
+            backgroundClip: "padding-box, border-box",
             borderRadius: "24px",
-            padding: "10px 14px",
+            padding: "8px 12px",
             display: "flex",
             alignItems: "center",
             gap: "6px",
@@ -342,10 +345,10 @@ export default function MapPage() {
             WebkitBackdropFilter: "blur(8px)",
             cursor: "pointer",
             transition: "all 0.2s ease",
-            boxShadow: isSimulating ? "0 4px 16px rgba(201,168,76,0.4)" : "none",
+            boxShadow: isSimulating ? "0 4px 16px rgba(251,191,36,0.3)" : "none",
           }}
         >
-          🚶‍♂️{" "}
+          🚶‍♂️{" "}
           {isSimulating
             ? (language === "tr" ? "Durdur" : language === "hu" ? "Megállít" : "Stop Walk")
             : (language === "tr" ? "Yürüyüş Simüle Et" : language === "hu" ? "Séta Szimuláció" : "Simulate Walk")
@@ -361,20 +364,20 @@ export default function MapPage() {
             bottom: "134px",
             right: "16px",
             zIndex: 900,
-            background: "rgba(26,26,46,0.9)",
-            border: "1px solid rgba(201,168,76,0.5)",
+            background: "var(--color-ai-bg)",
+            border: "1px solid rgba(251, 191, 36, 0.4)",
             borderRadius: "12px",
             padding: "6px 12px",
             fontSize: "11px",
             fontFamily: "monospace",
-            color: "#c9a84c",
+            color: "var(--color-gold, #fbbf24)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
             lineHeight: 1.6,
             pointerEvents: "none",
           }}
         >
-          <div style={{ fontSize: "10px", color: "#9ca3af", marginBottom: "2px" }}>
+          <div style={{ fontSize: "10px", color: "var(--color-text-muted, #94a3b8)", marginBottom: "2px" }}>
             📡 GPS SIM
           </div>
           <div>lat: {position[0].toFixed(5)}</div>
@@ -419,8 +422,8 @@ export default function MapPage() {
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
-              border: "1px solid rgb(55, 65, 81)",
-              background: "rgba(17, 17, 34, 0.92)",
+              border: "1px solid rgba(251, 191, 36, 0.2)",
+              background: "var(--color-ai-bg)",
               backdropFilter: "blur(20px)",
               WebkitBackdropFilter: "blur(20px)",
               boxShadow: "0 25px 60px rgba(0,0,0,0.5)",
@@ -431,25 +434,25 @@ export default function MapPage() {
           >
             <div
               style={{
-                background: "#1a1a2e",
+                background: "var(--color-ai-bg)",
                 padding: "16px",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                borderBottom: "1px solid rgb(31, 41, 55)",
+                borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
               }}
             >
               <h3
                 style={{
                   fontWeight: "bold",
-                  color: "white",
+                  color: "var(--color-ai-text)",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
                   margin: 0,
                 }}
               >
-                <Bot style={{ color: "#D4AF37" }} />
+                <Bot style={{ color: "var(--color-gold, #fbbf24)" }} />
                 {t("agent_title", language)}
               </h3>
               <button
