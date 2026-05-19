@@ -14,7 +14,6 @@ export const weatherToolDefinition = {
 export async function getWeatherForecast({ lat, lng }) {
   const apiKey = process.env.OPENWEATHER_API_KEY;
 
-  // ── Mock fallback (no key configured) ────────────────────────────────────
   if (!apiKey || apiKey === 'your_openweather_api_key_here') {
     return {
       status: 'success',
@@ -26,7 +25,6 @@ export async function getWeatherForecast({ lat, lng }) {
     };
   }
 
-  // ── Live OpenWeatherMap /forecast (3-hour steps, cnt=4 ≈ 12 hours) ───────
   try {
     const latitude  = parseFloat(lat);
     const longitude = parseFloat(lng);
@@ -38,20 +36,18 @@ export async function getWeatherForecast({ lat, lng }) {
     }
     const data = await response.json();
 
-    // Current conditions come from the first forecast slot
     const current = data.list[0];
     const currentCondition = current.weather[0].description;
     const temperatureCelsius = Math.round(current.main.temp);
     const now = Date.now();
 
-    // Detect the earliest rain/drizzle slot and calculate minutes away
     let rainInMinutes = null;
     for (const item of data.list) {
-      const main = item.weather[0].main; // e.g. "Rain", "Drizzle", "Clear"
+      const main = item.weather[0].main;
       if (main === 'Rain' || main === 'Drizzle') {
-        const slotTime = item.dt * 1000; // dt is UNIX seconds
+        const slotTime = item.dt * 1000;
         rainInMinutes = Math.round((slotTime - now) / 60_000);
-        if (rainInMinutes < 0) rainInMinutes = 0; // already raining
+        if (rainInMinutes < 0) rainInMinutes = 0;
         break;
       }
     }

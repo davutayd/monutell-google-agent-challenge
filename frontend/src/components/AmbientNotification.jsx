@@ -36,7 +36,6 @@ export default function AmbientNotification({
         overflow: "hidden",
       }}
     >
-      {/* Sol altın çizgi aksan */}
       <div
         style={{
           position: "absolute",
@@ -49,7 +48,6 @@ export default function AmbientNotification({
         }}
       />
 
-      {/* Görsel / Emoji fallback */}
       {showImage ? (
         <img
           src={monument.imageUrl}
@@ -82,7 +80,6 @@ export default function AmbientNotification({
         </div>
       )}
 
-      {/* Metin */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <p
           style={{
@@ -126,7 +123,6 @@ export default function AmbientNotification({
         </div>
       </div>
 
-      {/* Aksiyonlar */}
       <div
         style={{
           display: "flex",

@@ -22,12 +22,8 @@ export const routeToolDefinition = {
   },
 };
 
-/**
- * Haversine distance — returns METRES.
- * Inputs must be valid finite numbers (pre-validated by caller).
- */
 function haversineMetres(lat1, lon1, lat2, lon2) {
-  const R = 6_371_000; // Earth radius in metres
+  const R = 6_371_000;
   const toRad = (deg) => deg * (Math.PI / 180);
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
@@ -37,11 +33,6 @@ function haversineMetres(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/**
- * Safely extract numeric lat/lon from a monument object.
- * Supports both { location: { lat, lng } } and flat { latitude, longitude } shapes.
- * Returns null if values are missing or non-finite.
- */
 function getMonumentCoords(monument) {
   const rawLat = monument.location?.lat ?? monument.latitude;
   const rawLon = monument.location?.lng ?? monument.longitude;
@@ -59,10 +50,8 @@ export async function optimizeTourRoute({ monument_ids, start_lat, start_lng }) 
       return { status: 'error', message: 'Invalid start coordinates.' };
     }
 
-    // Dynamic import to avoid circular dependency
     const { monuments } = await import('../mockData.js');
 
-    // Filter by requested IDs, skip monuments with bad coordinates
     const selectedMonuments = monuments
       .filter((m) => monument_ids.includes(m.id))
       .filter((m) => getMonumentCoords(m) !== null);
@@ -108,7 +97,6 @@ export async function optimizeTourRoute({ monument_ids, start_lat, start_lng }) 
     }
 
     const totalDistanceKm = totalDistanceMetres / 1000;
-    // Walking speed ~5 km/h
     const estimatedWalkingMinutes = Math.round((totalDistanceKm / 5) * 60);
 
     return {
